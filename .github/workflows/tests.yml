@@ -35,6 +35,7 @@ jobs:
           name: unit-test-report
           path: reports/
           retention-days: 30
+
   validator-smoke:
     name: Validator Smoke Test
     runs-on: ubuntu-latest
@@ -44,24 +45,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pydantic
-      - name: Smoke test validator
-        run: |
-          python -c "
-          from src.validators.response_validators import LLMResponseValidator
-          v = LLMResponseValidator('{"key": "value"}')
-          v.is_valid_json().has_json_keys('key').not_empty()
-          assert v.passed
-          print('Validator smoke: PASS')
-          v2 = LLMResponseValidator('not json')
-          v2.is_valid_json()
-          assert not v2.passed
-          print('Invalid JSON detection: PASS')
-          v3 = LLMResponseValidator('Contact at test@example.com')
-          v3.no_pii()
-          assert not v3.passed
-          print('PII detection: PASS')
-          print('All smoke tests passed')
-          "
+      - name: Run validator smoke test
+        run: python tests/smoke_validator.py
+
   live-api-tests:
     name: Live Claude API Tests
     runs-on: ubuntu-latest
@@ -86,6 +72,7 @@ jobs:
           name: live-api-report
           path: reports/
           retention-days: 30
+
   all-passed:
     name: All Tests Passed
     runs-on: ubuntu-latest
