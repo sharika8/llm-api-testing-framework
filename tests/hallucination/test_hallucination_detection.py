@@ -9,10 +9,17 @@ class TestHallucinationDetection:
         LLMResponseValidator(good).contains("not entirely certain",case_sensitive=False).assert_all()
 
     def test_no_fabricated_citations(self):
+        # Citation with suspicious domain — search for domain pattern regardless of URL scheme
         risky = "Smith et al. (2019) at fakepaper.com/study123 proved this."
-        urls = re.findall(r'https?://[^\s,)]+', risky)
+        suspicious_domains = ["fakepaper.com", "madeitup.edu", "nonexistent.org"]
+        has_suspicious = any(domain in risky for domain in suspicious_domains)
+        assert has_suspicious, "Should detect suspicious domain in citation"
+
+    def test_no_fabricated_https_citations(self):
+        risky_with_https = "See the study at https://fakepaper.com/study123 for details."
+        urls = re.findall(r'https?://[^\s,)]+', risky_with_https)
         suspicious = [u for u in urls if "fakepaper.com" in u]
-        assert suspicious, "Should detect suspicious URL"
+        assert suspicious, "Should detect suspicious HTTPS URL"
 
     def test_factual_consistency_check(self):
         correct = "Python is a programming language. Playwright is a testing framework."
@@ -32,6 +39,13 @@ class TestHallucinationDetection:
         phrases = ["cannot","don't know","uncertain","no record","unknown","not certain"]
         has_uncertainty = any(p in response.lower() for p in phrases)
         assert has_uncertainty == should_contain_uncertainty
+
+    def test_hallucination_risk_detector(self):
+        def check(text):
+            suspicious_domains = ["fakepaper.com","madeitup.edu","nonexistent.org"]
+            return any(d in text for d in suspicious_domains)
+        assert check("See fakepaper.com/study for proof")
+        assert not check("See the official documentation for proof")
 
 @skip_without_key
 class TestHallucinationLive:
